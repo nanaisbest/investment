@@ -115,14 +115,14 @@
                 clearable
               />
               <el-select v-model="mootdxPeriod" style="width: 140px">
-                <el-option label="日线" :value="0" />
-                <el-option label="周线" :value="1" />
-                <el-option label="月线" :value="2" />
-                <el-option label="5分钟" :value="5" />
-                <el-option label="15分钟" :value="6" />
-                <el-option label="30分钟" :value="7" />
-                <el-option label="60分钟" :value="8" />
-                <el-option label="1分钟" :value="9" />
+                <el-option label="1分钟" :value="8" />
+                <el-option label="5分钟" :value="0" />
+                <el-option label="15分钟" :value="1" />
+                <el-option label="30分钟" :value="2" />
+                <el-option label="60分钟" :value="3" />
+                <el-option label="日线" :value="4" />
+                <el-option label="周线" :value="5" />
+                <el-option label="月线" :value="6" />
               </el-select>
               <el-button type="primary" @click="fetchMootdxKline" :loading="mootdxLoading">
                 获取K线
@@ -312,7 +312,7 @@ const sortOrder = ref('asc')
 
 // mootdx
 const mootdxSymbol = ref('000001')
-const mootdxPeriod = ref(0)
+const mootdxPeriod = ref(4)
 const mootdxLoading = ref(false)
 const klineChart = ref(null)
 let klineChartInstance = null
@@ -448,35 +448,69 @@ function renderKlineChart(rawData) {
     klineChartInstance = echarts.init(klineChart.value, 'dark')
   }
 
+  klineChartInstance.clear()
+
   if (!rawData || rawData.length === 0) {
     klineChartInstance.setOption({
       title: { text: '暂无K线数据', left: 'center', top: 'center', textStyle: { color: '#666', fontSize: 16 } }
-    }, true)
+    })
     return
   }
 
-  const reversed = [...rawData].reverse()
-  const dates = reversed.map((d) => d.date || d.datetime || d.time || '')
-  const prices = reversed.map((d) => d.close || 0)
-  const volumes = reversed.map((d) => d.volume || d.vol || 0)
+  // 按时间升序排列
+  const sorted = [...rawData].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+  const dates = sorted.map((d) => (d.date || '').slice(0, 16))
+  const closes = sorted.map((d) => d.close || 0)
+  const volumes = sorted.map((d) => d.volume || d.vol || 0)
+  const opens = sorted.map((d) => d.open || 0)
+
+  // 分离涨跌段：涨(close>=prev)用红色，跌用绿色
+  const upPrices = []
+  const downPrices = []
+  const upVols = []
+  const downVols = []
+  const upDots = []
+  const downDots = []
+
+  for (let i = 0; i < closes.length; i++) {
+    const prevClose = i > 0 ? closes[i - 1] : opens[i]
+    const isUp = closes[i] >= prevClose
+    if (isUp) {
+      upPrices.push(closes[i])
+      downPrices.push(null)
+      upDots.push(closes[i])
+      downDots.push(null)
+      upVols.push(volumes[i])
+      downVols.push(null)
+    } else {
+      upPrices.push(null)
+      downPrices.push(closes[i])
+      upDots.push(null)
+      downDots.push(closes[i])
+      upVols.push(null)
+      downVols.push(volumes[i])
+    }
+  }
 
   const option = {
     backgroundColor: 'transparent',
     grid: [
       { left: '4%', right: '4%', top: '5%', height: '55%' },
-      { left: '4%', right: '4%', top: '70%', height: '20%' },
+      { left: '4%', right: '4%', top: '68%', height: '22%' },
     ],
     xAxis: [
       {
         type: 'category',
         data: dates,
+        boundaryGap: false,
         axisLine: { lineStyle: { color: '#333' } },
-        axisLabel: { color: '#888', fontSize: 10 },
+        axisLabel: { color: '#888', fontSize: 10, rotate: 30 },
         gridIndex: 0,
       },
       {
         type: 'category',
         data: dates,
+        boundaryGap: false,
         axisLine: { lineStyle: { color: '#333' } },
         axisLabel: { show: false },
         gridIndex: 1,
@@ -500,32 +534,59 @@ function renderKlineChart(rawData) {
       },
     ],
     series: [
+      // 上涨线（红色）
       {
-        name: '收盘价',
+        name: '上涨',
         type: 'line',
-        data: prices,
-        smooth: true,
-        symbol: 'none',
+        data: upPrices,
+        connectNulls: false,
+        symbol: 'circle',
+        symbolSize: 4,
         lineStyle: { color: '#e63946', width: 2 },
+        itemStyle: { color: '#e63946' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(230,57,70,0.3)' },
-            { offset: 1, color: 'rgba(230,57,70,0.02)' },
+            { offset: 0, color: 'rgba(230,57,70,0.25)' },
+            { offset: 1, color: 'rgba(230,57,70,0.01)' },
           ]),
         },
         xAxisIndex: 0,
         yAxisIndex: 0,
       },
+      // 下跌线（绿色）
       {
-        name: '成交量',
-        type: 'bar',
-        data: volumes,
-        itemStyle: {
+        name: '下跌',
+        type: 'line',
+        data: downPrices,
+        connectNulls: false,
+        symbol: 'circle',
+        symbolSize: 4,
+        lineStyle: { color: '#22c55e', width: 2 },
+        itemStyle: { color: '#22c55e' },
+        areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(230,57,70,0.4)' },
-            { offset: 1, color: 'rgba(230,57,70,0.05)' },
+            { offset: 0, color: 'rgba(34,197,94,0.25)' },
+            { offset: 1, color: 'rgba(34,197,94,0.01)' },
           ]),
         },
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+      },
+      // 上涨成交量（红）
+      {
+        name: '量-涨',
+        type: 'bar',
+        data: upVols,
+        itemStyle: { color: 'rgba(230,57,70,0.55)' },
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+      },
+      // 下跌成交量（绿）
+      {
+        name: '量-跌',
+        type: 'bar',
+        data: downVols,
+        itemStyle: { color: 'rgba(34,197,94,0.55)' },
         xAxisIndex: 1,
         yAxisIndex: 1,
       },
@@ -535,10 +596,23 @@ function renderKlineChart(rawData) {
       backgroundColor: 'rgba(26,26,26,0.95)',
       borderColor: '#333',
       textStyle: { color: '#e8e8e8', fontSize: 12 },
+      formatter: (params) => {
+        const p = params.filter((x) => x.value !== null && x.value !== undefined)
+        if (!p.length) return ''
+        let html = `<div style="font-weight:bold;margin-bottom:4px">${p[0].axisValue}</div>`
+        p.forEach((item) => {
+          if (item.seriesName.includes('量')) {
+            html += `<div>${item.marker} ${item.seriesName}: ${(item.value / 10000).toFixed(0)}万手</div>`
+          } else {
+            html += `<div>${item.marker} ${item.seriesName}: ${item.value?.toFixed(2)}</div>`
+          }
+        })
+        return html
+      },
     },
   }
 
-  klineChartInstance.setOption(option, true)
+  klineChartInstance.setOption(option)
 }
 
 async function fetchAkshareSentiment() {
