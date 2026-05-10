@@ -1,0 +1,267 @@
+/* ===== 投资数据平台 - 红黑高级主题 ===== */
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #222222;
+  --bg-input: #161616;
+
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+
+  --accent: #e63946;
+  --accent-light: #ff4757;
+  --accent-dark: #c1121f;
+  --accent-glow: rgba(230, 57, 70, 0.3);
+
+  --border: #2a2a2a;
+  --border-light: #333333;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-red: 0 4px 20px rgba(230, 57, 70, 0.15);
+  --shadow-red-lg: 0 8px 40px rgba(230, 57, 70, 0.2);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Element Plus 深色主题覆盖 ===== */
+
+/* 通用卡片 */
+.el-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: all 0.3s ease;
+}
+.el-card:hover {
+  background: var(--bg-card-hover) !important;
+  box-shadow: var(--shadow-lg), var(--shadow-red) !important;
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 表格 */
+.el-table {
+  --el-table-bg-color: var(--bg-card) !important;
+  --el-table-tr-bg-color: var(--bg-card) !important;
+  --el-table-header-bg-color: var(--bg-secondary) !important;
+  --el-table-border-color: var(--border) !important;
+  --el-table-text-color: var(--text-primary) !important;
+  --el-table-header-text-color: var(--text-secondary) !important;
+  --el-table-row-hover-bg-color: var(--bg-card-hover) !important;
+  --el-fill-color-light: var(--bg-secondary) !important;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary) !important;
+}
+
+/* 修复条纹行文字颜色 */
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table tr {
+  background-color: var(--bg-card) !important;
+}
+
+.el-table td, .el-table th {
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+/* 表格行可点击 */
+.el-table__body tr {
+  cursor: pointer;
+}
+.el-table__body tr:hover > td {
+  background-color: var(--bg-card-hover) !important;
+}
+
+/* 输入框 */
+.el-input__wrapper {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-sm) !important;
+}
+.el-input__inner {
+  color: var(--text-primary) !important;
+}
+.el-input__wrapper:hover {
+  border-color: var(--accent) !important;
+}
+
+/* 按钮 */
+.el-button--primary {
+  --el-button-bg-color: var(--accent) !important;
+  --el-button-border-color: var(--accent) !important;
+  --el-button-hover-bg-color: var(--accent-light) !important;
+  --el-button-hover-border-color: var(--accent-light) !important;
+  box-shadow: var(--shadow-red);
+}
+.el-button--default {
+  --el-button-bg-color: var(--bg-card) !important;
+  --el-button-border-color: var(--border) !important;
+  --el-button-text-color: var(--text-primary) !important;
+}
+
+/* 标签页 */
+.el-tabs__header {
+  border-bottom-color: var(--border) !important;
+}
+.el-tabs__item {
+  color: var(--text-secondary) !important;
+}
+.el-tabs__item.is-active {
+  color: var(--accent) !important;
+}
+.el-tabs__active-bar {
+  background-color: var(--accent) !important;
+}
+
+/* 选择器 */
+.el-select .el-input__wrapper {
+  background: var(--bg-input) !important;
+}
+
+/* 加载遮罩 */
+.el-loading-mask {
+  background-color: rgba(10, 10, 10, 0.8) !important;
+}
+
+/* 消息提示 */
+.el-message {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+/* ===== 自定义工具类 ===== */
+
+.premium-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.premium-card:hover::before {
+  opacity: 1;
+}
+
+.premium-card:hover {
+  box-shadow: var(--shadow-lg), var(--shadow-red-lg);
+  transform: translateY(-2px);
+  border-color: var(--border-light);
+}
+
+/* 数据指标数字 */
+.stat-number {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--accent-glow);
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-up {
+  color: #e63946;
+}
+
+.stat-down {
+  color: #22c55e;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* 页面标题 */
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+.page-title span {
+  color: var(--accent);
+}
+
+/* 数据源标签 */
+.source-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.source-tag.mootdx { background: rgba(230,57,70,0.2); color: var(--accent-light); }
+.source-tag.tencent { background: rgba(59,130,246,0.2); color: #60a5fa; }
+.source-tag.akshare { background: rgba(34,197,94,0.2); color: #4ade80; }
+.source-tag.iwencai { background: rgba(168,85,247,0.2); color: #c084fc; }
+.source-tag.tonghuashun { background: rgba(251,146,60,0.2); color: #fb923c; }
