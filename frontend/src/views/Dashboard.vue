@@ -7,7 +7,7 @@
           <span class="logo-icon">◆</span>
           <h1 class="logo-text">投资数据<span>平台</span></h1>
         </div>
-        <span class="header-tagline">五大数据源 · 一站式接入</span>
+        <span class="header-tagline">七大数据源 · 一站式接入</span>
       </div>
       <div class="header-right">
         <el-tag :type="backendOnline ? 'danger' : 'info'" effect="dark" round>
@@ -246,6 +246,153 @@
               </el-table-column>
             </el-table>
           </el-tab-pane>
+
+          <!-- 巨潮资讯网 - 公告查询 -->
+          <el-tab-pane name="cninfo">
+            <template #label>
+              <span class="tab-label">
+                <span class="source-tag cninfo">巨潮资讯</span> 公告查询
+              </span>
+            </template>
+            <div class="tab-toolbar">
+              <el-input
+                v-model="cninfoStockCode"
+                placeholder="股票代码，如 000001"
+                style="width: 180px"
+                clearable
+                @keyup.enter="onCninfoSearch"
+              />
+              <el-select v-model="cninfoCategory" style="width: 140px" placeholder="公告类别" @change="onCninfoSearch">
+                <el-option
+                  v-for="cat in cninfoCategories"
+                  :key="cat.value"
+                  :label="cat.label"
+                  :value="cat.value"
+                />
+              </el-select>
+              <el-input
+                v-model="cninfoKeyword"
+                placeholder="关键词搜索（如 分红、重组）"
+                style="width: 240px"
+                clearable
+                @keyup.enter="onCninfoSearch"
+              />
+              <el-button type="primary" @click="onCninfoSearch" :loading="cninfoLoading">
+                查询公告
+              </el-button>
+            </div>
+            <div class="tab-toolbar">
+              <el-date-picker
+                v-model="cninfoStartDate"
+                type="date"
+                placeholder="开始日期"
+                style="width: 160px"
+                value-format="YYYY-MM-DD"
+              />
+              <span style="color: var(--text-muted); line-height: 32px; margin: 0 8px;">至</span>
+              <el-date-picker
+                v-model="cninfoEndDate"
+                type="date"
+                placeholder="结束日期"
+                style="width: 160px"
+                value-format="YYYY-MM-DD"
+              />
+              <el-button @click="cninfoStartDate = ''; cninfoEndDate = ''; onCninfoSearch()">清除日期</el-button>
+            </div>
+            <el-table :data="cninfoData" stripe max-height="450" v-loading="cninfoLoading">
+              <el-table-column prop="code" label="股票代码" width="100" />
+              <el-table-column prop="name" label="股票名称" width="120" />
+              <el-table-column prop="title" label="公告标题" min-width="300">
+                <template #default="{ row }">
+                  <a
+                    v-if="row.pdf_url"
+                    :href="row.pdf_url"
+                    target="_blank"
+                    class="news-link"
+                    @click.prevent="openPdf(row.pdf_url)"
+                  >
+                    {{ row.title }}
+                  </a>
+                  <span v-else>{{ row.title }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="time" label="公告时间" width="170">
+                <template #default="{ row }">
+                  {{ formatTimestamp(row.time) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="pdf_type" label="类型" width="80" />
+            </el-table>
+            <div v-if="cninfoTotal > cninfoPageSize" class="pagination-bar">
+              <el-button size="small" :disabled="cninfoPage <= 1" @click="cninfoGoPage(1)">首页</el-button>
+              <el-button size="small" :disabled="cninfoPage <= 1" @click="cninfoGoPage(cninfoPage - 1)">上一页</el-button>
+              <span class="page-info">第 {{ cninfoPage }} 页 / 共 {{ Math.ceil(cninfoTotal / cninfoPageSize) }} 页（{{ cninfoTotal }} 条）</span>
+              <el-button size="small" :disabled="cninfoPage >= Math.ceil(cninfoTotal / cninfoPageSize)" @click="cninfoGoPage(cninfoPage + 1)">下一页</el-button>
+              <el-button size="small" :disabled="cninfoPage >= Math.ceil(cninfoTotal / cninfoPageSize)" @click="cninfoGoPage(Math.ceil(cninfoTotal / cninfoPageSize))">末页</el-button>
+            </div>
+            <el-empty v-if="!cninfoLoading && cninfoData.length === 0" description="输入股票代码查询公告，如 000001 或 600519" />
+          </el-tab-pane>
+
+          <!-- 巴菲特先知 - AI 交互式对话 -->
+          <el-tab-pane name="buffett">
+            <template #label>
+              <span class="tab-label">
+                <span class="source-tag buffett">巴菲特先知</span> AI 对话
+              </span>
+            </template>
+            <div class="chat-container">
+              <!-- 消息列表 -->
+              <div class="chat-messages" ref="chatMessagesRef">
+                <div v-if="buffettMessages.length === 0 && !buffettLoading" class="chat-welcome">
+                  <div class="welcome-icon">📊</div>
+                  <p class="welcome-title">巴菲特先知 · 价值投资对话</p>
+                  <p class="welcome-sub">你可以直接提问，或输入股票代码进行深度分析</p>
+                  <div class="quick-actions">
+                    <el-tag v-for="q in quickQuestions" :key="q" class="quick-tag" @click="sendMessage(q)" type="info">
+                      {{ q }}
+                    </el-tag>
+                  </div>
+                </div>
+                <div v-for="(msg, idx) in buffettMessages" :key="idx" class="chat-bubble-row" :class="msg.role === 'user' ? 'chat-row-user' : 'chat-row-ai'">
+                  <div class="chat-bubble" :class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'">
+                    <div v-if="msg.role === 'assistant'" class="bubble-content" v-html="msg.rendered" />
+                    <div v-else class="bubble-content">{{ msg.content }}</div>
+                    <div v-if="msg.score" class="bubble-score">
+                      <el-tag :type="msg.score >= 7 ? 'success' : msg.score >= 5 ? 'warning' : 'danger'" size="small">
+                        综合评分: {{ msg.score }}/10
+                      </el-tag>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="buffettLoading" class="chat-bubble-row chat-row-ai">
+                  <div class="chat-bubble chat-bubble-ai">
+                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                  </div>
+                </div>
+              </div>
+              <!-- 输入区 -->
+              <div class="chat-input-area">
+                <div v-if="buffettStockCode" class="chat-stock-tag">
+                  <el-tag closable @close="clearStockCode" type="warning" size="small">
+                    分析中: {{ buffettStockCode }}
+                  </el-tag>
+                </div>
+                <div class="chat-input-row">
+                  <el-input
+                    v-model="buffettInput"
+                    placeholder="输入股票代码或问题，如 000001 或 分析 600519..."
+                    size="default"
+                    clearable
+                    @keyup.enter="sendMessage()"
+                    class="chat-input-main"
+                  />
+                  <el-button type="primary" @click="sendMessage()" :loading="buffettLoading" :disabled="!buffettInput.trim()">
+                    发送
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
         </el-tabs>
       </el-card>
 
@@ -270,19 +417,22 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Refresh, Right } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
   getOverview,
   tencentQuote,
   getAllStocks,
-  mootdxKline,
+  tencentKline,
   akshareSentiment,
   akshareNews,
   tonghuashunHotConcepts,
   tonghuashunStrongStocks,
   iwencaiSearch,
+  cninfoAnnouncements,
+  analyzeBuffettOracle,
+  chatWithBuffettOracle,
 } from '../api'
 
 // ===== 状态 =====
@@ -334,6 +484,41 @@ const iwencaiQuery = ref('涨停')
 const iwencaiResult = ref([])
 const iwencaiLoading = ref(false)
 
+// 巨潮资讯网
+const cninfoStockCode = ref('')
+const cninfoKeyword = ref('')
+const cninfoCategory = ref('')
+const cninfoStartDate = ref('')
+const cninfoEndDate = ref('')
+const cninfoData = ref([])
+const cninfoLoading = ref(false)
+const cninfoTotal = ref(0)
+const cninfoPage = ref(1)
+const cninfoPageSize = ref(30)
+const cninfoCategories = [
+  { label: '全部公告', value: '' },
+  { label: '年度报告', value: 'category_ndbg_szsh' },
+  { label: '半年度报告', value: 'category_bndbg_szsh' },
+  { label: '一季度报告', value: 'category_yjdbg_szsh' },
+  { label: '三季度报告', value: 'category_sjdbg_szsh' },
+]
+
+// 巴菲特先知 - 对话
+const buffettInput = ref('')
+const buffettStockCode = ref('')
+const buffettMessages = ref([])
+const buffettLoading = ref(false)
+const chatMessagesRef = ref(null)
+const buffettSessionId = ref('')
+const quickQuestions = [
+  '分析 000001 平安银行',
+  '分析 600519 贵州茅台',
+  '对比银行股和白酒股的投资价值',
+  '什么是DCF估值法？怎么用？',
+  '如何判断一家公司有护城河？',
+  '市盈率5倍意味着什么？',
+]
+
 // 数据源列表
 const dataSources = [
   { name: '腾讯财经', tag: 'tencent', tab: 'tencent', desc: '实时行情 · 秒级响应 · 免费无需认证' },
@@ -341,6 +526,8 @@ const dataSources = [
   { name: 'akshare', tag: 'akshare', tab: 'akshare', desc: '市场情绪 · 研报新闻 · 数据广泛' },
   { name: '同花顺热点', tag: 'tonghuashun', tab: 'tonghuashun', desc: '热点追踪 · 题材归因 · 短线利器' },
   { name: '问财', tag: 'iwencai', tab: 'iwencai', desc: '自然语言 · 语义搜索 · 智能选股' },
+  { name: '巨潮资讯', tag: 'cninfo', tab: 'cninfo', desc: '官方公告 · 年报季报 · PDF原文' },
+  { name: '巴菲特先知', tag: 'buffett', tab: 'buffett', desc: 'AI价值投资 · 全维度分析 · 巴菲特框架' },
 ]
 
 // ===== 方法 =====
@@ -432,7 +619,7 @@ function jumpToKline(row) {
 async function fetchMootdxKline() {
   mootdxLoading.value = true
   try {
-    const { data } = await mootdxKline(mootdxSymbol.value, mootdxPeriod.value, 100)
+    const { data } = await tencentKline(mootdxSymbol.value, mootdxPeriod.value, 100)
     if (data.status === 'success' && data.data) {
       await nextTick()
       renderKlineChart(data.data)
@@ -492,6 +679,21 @@ function renderKlineChart(rawData) {
     }
   }
 
+  // 修复颜色切换点的断线：新颜色从上一个点开始，保证线段连续
+  for (let i = 1; i < closes.length; i++) {
+    const prevUp = closes[i - 1] >= (i > 1 ? closes[i - 2] : opens[i - 1])
+    const currUp = closes[i] >= closes[i - 1]
+    if (prevUp !== currUp) {
+      if (currUp) {
+        upPrices[i - 1] = closes[i - 1]
+        upDots[i - 1] = closes[i - 1]
+      } else {
+        downPrices[i - 1] = closes[i - 1]
+        downDots[i - 1] = closes[i - 1]
+      }
+    }
+  }
+
   const option = {
     backgroundColor: 'transparent',
     grid: [
@@ -539,8 +741,9 @@ function renderKlineChart(rawData) {
         name: '上涨',
         type: 'line',
         data: upPrices,
+        smooth: true,
         connectNulls: false,
-        symbol: 'circle',
+        symbol: 'none',
         symbolSize: 4,
         lineStyle: { color: '#e63946', width: 2 },
         itemStyle: { color: '#e63946' },
@@ -558,8 +761,9 @@ function renderKlineChart(rawData) {
         name: '下跌',
         type: 'line',
         data: downPrices,
+        smooth: true,
         connectNulls: false,
-        symbol: 'circle',
+        symbol: 'none',
         symbolSize: 4,
         lineStyle: { color: '#22c55e', width: 2 },
         itemStyle: { color: '#22c55e' },
@@ -667,6 +871,143 @@ async function fetchIwencai() {
   }
 }
 
+// 巨潮资讯网
+function onCninfoSearch() {
+  cninfoPage.value = 1
+  fetchCninfoAnnouncements()
+}
+
+async function fetchCninfoAnnouncements() {
+  cninfoLoading.value = true
+  try {
+    const { data } = await cninfoAnnouncements({
+      stock_code: cninfoStockCode.value,
+      keyword: cninfoKeyword.value,
+      start_date: cninfoStartDate.value,
+      end_date: cninfoEndDate.value,
+      category: cninfoCategory.value,
+      page_num: cninfoPage.value,
+      page_size: cninfoPageSize.value,
+    })
+    if (data.status === 'success') {
+      cninfoData.value = data.data || []
+      cninfoTotal.value = data.total || 0
+    }
+  } finally {
+    cninfoLoading.value = false
+  }
+}
+
+function openPdf(url) {
+  if (url) window.open(url, '_blank')
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '--'
+  const d = new Date(ts)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
+}
+
+function cninfoGoPage(p) {
+  cninfoPage.value = p
+  fetchCninfoAnnouncements()
+}
+
+// 巴菲特先知 - 交互式对话
+import MarkdownIt from 'markdown-it'
+const md = new MarkdownIt({ html: false, breaks: true })
+
+function scrollChatBottom() {
+  nextTick(() => {
+    const el = chatMessagesRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+function clearStockCode() {
+  buffettStockCode.value = ''
+}
+
+async function sendMessage(presetMsg) {
+  const msg = presetMsg || buffettInput.value.trim()
+  if (!msg) return
+
+  // 从消息中自动提取6位股票代码
+  let stockCode = ''
+  const match = msg.match(/\b(\d{6})\b/)
+  if (match) {
+    stockCode = match[1]
+    if (stockCode !== buffettStockCode.value) {
+      buffettStockCode.value = stockCode
+    }
+  }
+
+  buffettMessages.value.push({ role: 'user', content: msg })
+  buffettMessages.value.push({ role: 'assistant', content: '', rendered: '', score: null })
+  buffettInput.value = ''
+  buffettLoading.value = true
+  scrollChatBottom()
+
+  const aiMsg = buffettMessages.value[buffettMessages.value.length - 1]
+
+  try {
+    const response = await fetch('/api/analysis/buffett-oracle/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: buffettSessionId.value, message: msg, stock_code: stockCode }),
+    })
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      throw new Error(errData.detail || 'HTTP ' + response.status)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const event = JSON.parse(line.slice(6))
+          if (event.type === 'token') {
+            aiMsg.content += event.content
+            aiMsg.rendered = md.render(aiMsg.content)
+            scrollChatBottom()
+          } else if (event.type === 'context') {
+            buffettSessionId.value = event.session_id
+            buffettStockCode.value = event.stock_code
+          } else if (event.type === 'done') {
+            buffettSessionId.value = event.session_id
+            aiMsg.score = event.score
+            aiMsg.rendered = md.render(aiMsg.content)
+          } else if (event.type === 'error') {
+            aiMsg.content = event.message || 'AI 响应失败'
+            aiMsg.rendered = md.render('**错误**: ' + aiMsg.content)
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  } catch (e) {
+    aiMsg.content = '网络请求失败: ' + (e.message || '未知错误')
+    aiMsg.rendered = md.render('**网络错误**: ' + aiMsg.content)
+  } finally {
+    buffettLoading.value = false
+    scrollChatBottom()
+  }
+}
+
 async function refreshAll() {
   refreshing.value = true
   await fetchOverview()
@@ -675,9 +1016,32 @@ async function refreshAll() {
 }
 
 // ===== 生命周期 =====
+let overviewTimer = null
+
+function isMarketHours() {
+  const now = new Date()
+  const day = now.getDay()
+  if (day === 0 || day === 6) return false
+  const h = now.getHours()
+  const m = now.getMinutes()
+  const t = h * 60 + m
+  return t >= 9 * 60 && t <= 15 * 60
+}
+
+function scheduledPoll() {
+  if (isMarketHours()) {
+    fetchOverview()
+  }
+}
+
 onMounted(() => {
   fetchOverview()
   fetchTencentQuote()
+  overviewTimer = setInterval(scheduledPoll, 2000)
+})
+
+onUnmounted(() => {
+  if (overviewTimer) clearInterval(overviewTimer)
 })
 
 // 窗口大小变化时重绘图表
@@ -814,7 +1178,7 @@ window.addEventListener('resize', () => {
 /* 底部数据源状态 */
 .source-status {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 16px;
   margin-bottom: 40px;
 }

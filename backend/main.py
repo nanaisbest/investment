@@ -1,14 +1,17 @@
 """
 投资数据平台 - 后端 API 服务
-整合 5 大数据源：mootdx、腾讯财经、akshare、同花顺问财、同花顺热点
+整合 6 大数据源：mootdx、腾讯财经、akshare、巨潮资讯、同花顺问财、同花顺热点
 """
 
 import json
 import os
 import time
 import asyncio
+import json
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from data_sources import (
     MootdxSource,
@@ -16,7 +19,9 @@ from data_sources import (
     AkshareSource,
     IwencaiSource,
     TonghuashunSource,
+    CninfoSource,
 )
+from analysis import BuffettOracleAnalyzer
 
 app = FastAPI(title="投资数据平台 API", version="1.0.0", docs_url="/api/docs")
 
@@ -34,6 +39,8 @@ tencent = TencentSource()
 akshare = AkshareSource()
 iwencai = IwencaiSource()
 tonghuashun = TonghuashunSource()
+cninfo = CninfoSource()
+buffett = BuffettOracleAnalyzer()
 
 # 加载全量股票列表
 _stock_list = []
@@ -192,6 +199,16 @@ async def tencent_financial(code: str = Query(default="000001")):
     return await tencent.get_financial_indicator(code.strip())
 
 
+@app.get("/api/tencent/kline")
+async def tencent_kline(
+    symbol: str = Query(default="000001", description="股票代码"),
+    period: int = Query(default=4, description="周期: 4=日线 5=周线 6=月线 0=5分钟 1=15分钟 2=30分钟 3=60分钟 8=1分钟"),
+    count: int = Query(default=100, description="数据条数"),
+):
+    """腾讯财经K线数据"""
+    return await tencent.get_kline(code=symbol.strip(), period=period, count=count)
+
+
 # ==================== akshare 接口 ====================
 
 @app.get("/api/akshare/news")
@@ -244,6 +261,70 @@ async def tonghuashun_strong_stocks():
 async def tonghuashun_attribution(code: str = Query(default="000001")):
     """同花顺个股题材归因"""
     return await tonghuashun.get_sector_attribution(code.strip())
+
+
+# ==================== 巨潮资讯网接口 ====================
+
+@app.get("/api/cninfo/announcements")
+async def cninfo_announcements(
+    stock_code: str = Query(default="", description="股票代码"),
+    keyword: str = Query(default="", description="搜索关键词"),
+    start_date: str = Query(default="", description="开始日期 yyyy-MM-dd"),
+    end_date: str = Query(default="", description="结束日期 yyyy-MM-dd"),
+    category: str = Query(default="", description="公告类别"),
+    page_num: int = Query(default=1, ge=1, description="页码"),
+    page_size: int = Query(default=30, ge=10, le=100, description="每页条数"),
+):
+    """巨潮资讯网 - 公告/年报查询"""
+    return await cninfo.search_announcements(
+        stock_code=stock_code.strip(),
+        keyword=keyword.strip(),
+        start_date=start_date.strip(),
+        end_date=end_date.strip(),
+        category=category.strip(),
+        page_num=page_num,
+        page_size=page_size,
+    )
+
+
+@app.get("/api/cninfo/stock-list")
+async def cninfo_stock_list():
+    """巨潮资讯网 - 股票列表"""
+    return await cninfo.get_stock_list()
+
+
+@app.get("/api/cninfo/daily-quotes")
+async def cninfo_daily_quotes(code: str = Query(default="", description="股票代码")):
+    """巨潮资讯网 - 每日行情"""
+    return await cninfo.get_daily_quotes(code=code.strip())
+
+
+# ==================== AI 分析接口 ====================
+
+@app.get("/api/analysis/buffett-oracle")
+async def analyze_buffett(stock_code: str = Query(default="000001", description="股票代码")):
+    """巴菲特先知 - AI 价值投资分析（单次）"""
+    return await buffett.analyze(stock_code.strip())
+
+
+class ChatRequest(BaseModel):
+    session_id: str = ""
+    message: str
+    stock_code: str = ""
+
+
+@app.post("/api/analysis/buffett-oracle/chat")
+async def chat_buffett(req: ChatRequest):
+    """巴菲特先知 - 交互式对话（流式 SSE）"""
+    return StreamingResponse(
+        buffett.chat_stream(
+            message=req.message,
+            session_id=req.session_id,
+            stock_code=req.stock_code.strip(),
+        ),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 if __name__ == "__main__":

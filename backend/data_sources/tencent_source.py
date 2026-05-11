@@ -43,6 +43,55 @@ class TencentSource:
                     results[code] = None
         return {"status": "success", "source": "tencent", "data": results}
 
+    # 周期映射：前端值 -> 腾讯API周期key
+    PERIOD_MAP = {
+        0: "m5",      # 5分钟
+        1: "m15",     # 15分钟
+        2: "m30",     # 30分钟
+        3: "m60",     # 60分钟
+        4: "day",     # 日线
+        5: "week",    # 周线
+        6: "month",   # 月线
+        8: "m1",      # 1分钟
+    }
+
+    async def get_kline(self, code: str, period: int = 4, count: int = 100) -> dict:
+        """获取K线数据"""
+        prefix = "sh" if code.startswith("6") else "sz"
+        period_key = self.PERIOD_MAP.get(period, "day")
+        url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{code},{period_key},,,{count},qfq"
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(url)
+                result = resp.json()
+                if result.get("code") != 0:
+                    return {"status": "error", "source": "tencent", "message": "腾讯接口返回异常"}
+                stock_data = result.get("data", {}).get(f"{prefix}{code}")
+                if not stock_data:
+                    return {"status": "success", "source": "tencent", "symbol": code, "data": []}
+                # 根据周期获取对应的数据key
+                if period_key in ("day", "week", "month"):
+                    data_key = f"qfq{period_key}"
+                else:
+                    data_key = period_key
+                raw_data = stock_data.get(data_key, [])
+                if not raw_data:
+                    return {"status": "success", "source": "tencent", "symbol": code, "data": []}
+                parsed = []
+                for row in raw_data:
+                    if len(row) >= 6:
+                        parsed.append({
+                            "date": str(row[0]),
+                            "open": float(row[1]),
+                            "close": float(row[2]),
+                            "high": float(row[3]),
+                            "low": float(row[4]),
+                            "volume": float(row[5]),
+                        })
+                return {"status": "success", "source": "tencent", "symbol": code, "data": parsed}
+        except Exception as e:
+            return {"status": "error", "source": "tencent", "message": str(e)}
+
     async def get_financial_indicator(self, code: str) -> dict:
         """获取财务指标"""
         prefix = "sh" if code.startswith("6") else "sz"

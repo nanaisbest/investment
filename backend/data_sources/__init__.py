@@ -3,6 +3,7 @@ from .tencent_source import TencentSource
 from .akshare_source import AkshareSource
 from .iwencai_source import IwencaiSource
 from .tonghuashun_source import TonghuashunSource
+from .cninfo_source import CninfoSource
 
 __all__ = [
     "MootdxSource",
@@ -10,4 +11,5 @@ __all__ = [
     "AkshareSource",
     "IwencaiSource",
     "TonghuashunSource",
+    "CninfoSource",
 ]

@@ -21,6 +21,8 @@ export const mootdxStockList = (market = 0) =>
 // ===== 腾讯财经接口 =====
 export const tencentQuote = (codes) => api.get('/tencent/quote', { params: { codes } })
 export const tencentIndicators = (codes) => api.get('/tencent/indicators', { params: { codes } })
+export const tencentKline = (symbol, period = 4, count = 100) =>
+  api.get('/tencent/kline', { params: { symbol, period, count } })
 
 // ===== akshare 接口 =====
 export const akshareNews = (symbol = '') => api.get('/akshare/news', { params: { symbol } })
@@ -35,3 +37,14 @@ export const tonghuashunHotConcepts = () => api.get('/tonghuashun/hot-concepts')
 export const tonghuashunStrongStocks = () => api.get('/tonghuashun/strong-stocks')
 export const tonghuashunAttribution = (code) =>
   api.get('/tonghuashun/attribution', { params: { code } })
+
+// ===== 巨潮资讯网接口 =====
+export const cninfoAnnouncements = (params) => api.get('/cninfo/announcements', { params })
+export const cninfoStockList = () => api.get('/cninfo/stock-list')
+export const cninfoDailyQuotes = (code) => api.get('/cninfo/daily-quotes', { params: { code } })
+
+// ===== AI 分析接口 =====
+export const analyzeBuffettOracle = (stock_code) =>
+  api.get('/analysis/buffett-oracle', { params: { stock_code }, timeout: 60000 })
+export const chatWithBuffettOracle = (sessionId, message, stockCode) =>
+  api.post('/analysis/buffett-oracle/chat', { session_id: sessionId, message, stock_code: stockCode }, { timeout: 120000 })
